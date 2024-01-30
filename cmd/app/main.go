@@ -3,14 +3,13 @@ package main
 import (
 	"log"
 
-	appbot "github.com/dahaev/bottesting/internal/app/bot"
+	"github.com/dahaev/bottesting/internal/app"
 )
 
 func main() {
-	const token = "6859994276:AAFZz5JkEsZ_WbTs7Z1ZPNjBjRVte8DF6fg"
-	bot, err := appbot.New(token)
+	application, err := app.New()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("cannot start application", err)
 	}
-	bot.Start()
+	application.Start()
 }

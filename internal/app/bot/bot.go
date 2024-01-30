@@ -1,9 +1,11 @@
 package appbot
 
 import (
+	"context"
 	"fmt"
 	"log"
 
+	"github.com/dahaev/bottesting/pkg/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -12,7 +14,7 @@ type Bot struct {
 	service service
 }
 
-func New(token string) (*Bot, error) {
+func New(token string, service service) (*Bot, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Fatal("cannot start bot", err)
@@ -20,7 +22,7 @@ func New(token string) (*Bot, error) {
 	}
 	return &Bot{
 		bot:     bot,
-		service: nil,
+		service: service,
 	}, nil
 }
 
@@ -31,13 +33,36 @@ func (b *Bot) Start() {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	// Обработка входящих сообщений
+	res, err := b.service.GetLadyReviews(context.Background(), "@derzkaya")
+	fmt.Println(res)
+	fmt.Println(err)
 	for update := range updates {
 		if update.Message == nil {
 			continue
 		}
+		if err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "К сожалению вы еще не имеете доступа к группам. Достаточно пройти регистрацию если Вы хотите делать публикации или просто запросить доступ для общения!")
+			//keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			//	tgbotapi.NewInlineKeyboardRow(
+			//		tgbotapi.NewInlineKeyboardButtonData("Регистрация", "registration"),
+			//		tgbotapi.NewInlineKeyboardButtonData("Доступ", "auth"),
+			//	),
+			//)
+			//keyboard = tgbotapi.New
+			//msg.ReplyMarkup = keyboard
+			//b.bot.Send(msg)
+			buttonRegistration := tgbotapi.NewKeyboardButton("Регистрация")
+			buttonAuth := tgbotapi.NewKeyboardButton("Доступ")
+			row := tgbotapi.NewKeyboardButtonRow(buttonRegistration, buttonAuth)
+			keyboard := tgbotapi.NewReplyKeyboard(row)
+			msg.ReplyMarkup = keyboard
+			b.bot.Send(msg)
+			b.HandleMessage(update.Message)
 
+		} else {
+
+		}
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 		//menu := b.CreateMenu()
@@ -45,15 +70,15 @@ func (b *Bot) Start() {
 		//msg.ReplyMarkup = menu
 		//b.bot.Send(msg)
 
-		photo := b.CreateMessage(update)
-		btn1 := tgbotapi.NewInlineKeyboardButtonData("Информация", "btn1")
-		btn2 := tgbotapi.NewInlineKeyboardButtonData("Отзывы", "btn2")
-		row := tgbotapi.NewInlineKeyboardRow(btn1, btn2)
-		keyboard := tgbotapi.NewInlineKeyboardMarkup(row)
+		//photo := b.CreateMessage(update)
+		//btn1 := tgbotapi.NewInlineKeyboardButtonData("Информация", "btn1")
+		//btn2 := tgbotapi.NewInlineKeyboardButtonData("Отзывы", "btn2")
+		//row := tgbotapi.NewInlineKeyboardRow(btn1, btn2)
+		//keyboard := tgbotapi.NewInlineKeyboardMarkup(row)
 
 		// Устанавливаем клавиатуру в сообщение
-		photo.ReplyMarkup = keyboard
-		b.bot.Send(photo)
+		//photo.ReplyMarkup = keyboard
+		//b.bot.Send(photo)
 
 		// Пример ответа на приветствие
 		if update.Message.IsCommand() {
@@ -63,6 +88,16 @@ func (b *Bot) Start() {
 				fmt.Println(err)
 			}
 		}
+	}
+}
+
+func (b *Bot) HandleMessage(message *tgbotapi.Message) {
+	switch message.Text {
+	case "Регистрация":
+		msg := tgbotapi.NewMessage(message.Chat.ID, "регистрация начата")
+		b.bot.Send(msg)
+	case "Доступ":
+
 	}
 }
 
@@ -105,4 +140,10 @@ func (b *Bot) CreateMenu() *tgbotapi.ReplyKeyboardMarkup {
 }
 
 type service interface {
+	CreateLadyAccount(ctx context.Context, account *models.Account) error
+	GetAccountLady(ctx context.Context, userName string) (*models.Account, error)
+	CreateDonAccount(ctx context.Context, username string) error
+	GetDonAccount(ctx context.Context, userName string) (*models.DonAccount, error)
+	CreateReview(ctx context.Context, ladyName string, donName string, review string, rating int) error
+	GetLadyReviews(ctx context.Context, ladyName string) ([]models.Review, error)
 }
